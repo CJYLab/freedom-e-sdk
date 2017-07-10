@@ -4,3 +4,6 @@
 [submodule "riscv-gnu-toolchain"]
 	path = riscv-gnu-toolchain
 	url = https://github.com/riscv/riscv-gnu-toolchain.git
+[submodule "software/mnist/libfixmath"]
+	path = software/mnist/libfixmath
+	url = https://github.com/PetteriAimonen/libfixmath.git
