@@ -4,3 +4,6 @@
 [submodule "riscv-gnu-toolchain"]
 	path = riscv-gnu-toolchain
 	url = https://github.com/riscv/riscv-gnu-toolchain.git
+[submodule "software/train_twolayernet/libfixmath"]
+	path = software/train_twolayernet/libfixmath
+	url = https://github.com/msyksphinz/libfixmath.git
