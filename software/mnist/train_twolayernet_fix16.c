@@ -107,6 +107,8 @@ double drnd ();
 
 int main ()
 {
+
+#ifdef NEVER
   fix16_t wh0[INPUTNO * HIDDENNO];
   fix16_t wb0[HIDDENNO];
 
@@ -213,6 +215,8 @@ int main ()
 
   close(fd_image);
   close(fd_label);
+
+#endif // NEVER
 
   return 0;
 }
