@@ -1,20 +1,39 @@
-TARGET = train_twolayernet_fix16
+TARGET = mnist
 
-C_SRCS += train_twolayernet_fix16.c
+C_SRCS := train_twolayernet_fix16.c
 CFLAGS += -O2 -fno-builtin-printf
 CFLAGS += -I$(abspath libfixmath/libfixmath/)
 CFLAGS += -DFIXMATH_NO_OVERFLOW
 
 LDFLAGS += -L$(abspath libfixmath/libfixmath/)
 LDFLAGS += -lfixmath
+LDFLAGS += train-images-idx3-ubyte.100.o
 
 LINK_DEPS += libfixmath.a
+LINK_DEPS += train_data
+LINK_DEPS += t10k_data
+LINK_DEPS += train-images-idx3-ubyte.100.o
 
-libfixmath.a:
-	$(MAKE) -C ./libfixmath/libfixmath CC=$(CC) CC_FLAGS="$(CFLAGS)" LD_FLAGS="$(LDFLAGS)" RISCV_ARCH=$(RISCV_ARCH) RISCV_ABI=$(RISCV_ABI) AR=$(AR)
+CLEAN_OBJS += train-images-idx3-ubyte.100.o
 
 $(DHRY_OBJS): %.o: %.c $(HEADERS)
 	$(CC) $(CFLAGS) $(DHRY_CFLAGS) -c -o $@ $<
 
 BSP_BASE = ../../bsp
 include $(BSP_BASE)/env/common.mk
+
+libfixmath.a:
+	$(MAKE) -C ./libfixmath/libfixmath CC=$(CC) CC_FLAGS="$(CFLAGS)" LD_FLAGS="$(LDFLAGS)" RISCV_ARCH=$(RISCV_ARCH) RISCV_ABI=$(RISCV_ABI) AR=$(AR)
+
+train-images-idx3-ubyte.100.o: train-images-idx3-ubyte
+	head -c 4000000 $< > $<.100
+	riscv64-unknown-elf-objcopy -I binary -O elf32-littleriscv -B riscv --rename-section .data=.rodata $<.100 $@
+
+train_data: train-images-idx3-ubyte train-labels-idx1-ubyte
+t10k_data: t10k-images-idx3-ubyte t10k-labels-idx1-ubyte
+
+%-ubyte: %-ubyte.gz
+	gunzip $^
+
+%.gz:
+	wget "http://yann.lecun.com/exdb/mnist/$@"

@@ -105,9 +105,34 @@ void initwb(const int x_size, fix16_t *wb);
 double rand_normal ( double mu, double sigma );
 double drnd ();
 
+const char *message = "hello\r\n";
+
+extern char _binary_train_images_idx3_ubyte_100_start[];
+extern char _binary_train_images_idx3_ubyte_100_end[];
+
+const char* hex_enum[] = {"0", "1", "2", "3", "4", "5", "6", "7",
+                          "8", "9", "a", "b", "c", "d", "e", "f"};
+
 int main ()
 {
+  write (STDOUT_FILENO, message, strlen (message));
 
+  int len = _binary_train_images_idx3_ubyte_100_end - _binary_train_images_idx3_ubyte_100_start;
+  
+  int i;
+  const int offset = 0x12;
+  for (i = 0; i < len; i++) {
+    char hex_value = _binary_train_images_idx3_ubyte_100_start[i+offset];
+    
+    write (STDOUT_FILENO, hex_enum[(hex_value >> 4) & 0x0f], 2); 
+    write (STDOUT_FILENO, hex_enum[(hex_value >> 0) & 0x0f], 2);
+
+    if ((i % 28) == 27) { write (STDOUT_FILENO, "\r\n", 2); }
+  }
+
+  
+  return 0;
+  
 #ifdef NEVER
   fix16_t wh0[INPUTNO * HIDDENNO];
   fix16_t wb0[HIDDENNO];
