@@ -110,6 +110,16 @@ const char *message = "hello\r\n";
 extern char _binary_train_images_idx3_ubyte_100_start[];
 extern char _binary_train_images_idx3_ubyte_100_end[];
 
+extern char _binary_wb0_bin_start[];
+extern char _binary_wb0_bin_end[];
+extern char _binary_wb1_bin_start[];
+extern char _binary_wb1_bin_end[];
+extern char _binary_wh0_bin_start[];
+extern char _binary_wh0_bin_end[];
+extern char _binary_wh1_bin_start[];
+extern char _binary_wh1_bin_end[];
+
+
 const char* hex_enum[] = {"0", "1", "2", "3", "4", "5", "6", "7",
                           "8", "9", "a", "b", "c", "d", "e", "f"};
 
@@ -118,27 +128,41 @@ int main ()
   write (STDOUT_FILENO, message, strlen (message));
 
   int len = _binary_train_images_idx3_ubyte_100_end - _binary_train_images_idx3_ubyte_100_start;
-  
+
   int i;
   const int offset = 0x12;
-  for (i = 0; i < len; i++) {
-    char hex_value = _binary_train_images_idx3_ubyte_100_start[i+offset];
-    
-    write (STDOUT_FILENO, hex_enum[(hex_value >> 4) & 0x0f], 2); 
+  // for (i = 0; i < len; i++) {
+  //   char hex_value = _binary_train_images_idx3_ubyte_100_start[i+offset];
+  //
+  //   write (STDOUT_FILENO, hex_enum[(hex_value >> 4) & 0x0f], 2);
+  //   write (STDOUT_FILENO, hex_enum[(hex_value >> 0) & 0x0f], 2);
+  //
+  //   if ((i % 28) == 27) { write (STDOUT_FILENO, "\r\n", 2); }
+  // }
+
+  fix16_t *wh0;  // [INPUTNO * HIDDENNO];
+  fix16_t *wb0;  // [HIDDENNO];
+  fix16_t *wh1;  // [HIDDENNO * OUTPUTNO];
+  fix16_t *wb1;  // [OUTPUTNO];
+
+  wh0 = _binary_wh0_bin_start;
+  wb0 = _binary_wb0_bin_start;
+  wh1 = _binary_wh1_bin_start;
+  wb1 = _binary_wb1_bin_start;
+
+  for (i = 0; i < INPUTNO; i++) {
+    char hex_value = wh0[i];
+
+    write (STDOUT_FILENO, hex_enum[(hex_value >> 4) & 0x0f], 2);
     write (STDOUT_FILENO, hex_enum[(hex_value >> 0) & 0x0f], 2);
 
-    if ((i % 28) == 27) { write (STDOUT_FILENO, "\r\n", 2); }
+    if ((i % HIDDENNO) == (HIDDENNO-1)) { write (STDOUT_FILENO, "\r\n", 2); }
   }
 
-  
-  return 0;
-  
-#ifdef NEVER
-  fix16_t wh0[INPUTNO * HIDDENNO];
-  fix16_t wb0[HIDDENNO];
 
-  fix16_t wh1[HIDDENNO * OUTPUTNO];
-  fix16_t wb1[OUTPUTNO];
+  return 0;
+
+#ifdef NEVER
 
   fix16_t hi[HIDDENNO + 1];
   fix16_t *in_data = malloc (sizeof(fix16_t) * MAXINPUTNO * INPUTNO);
