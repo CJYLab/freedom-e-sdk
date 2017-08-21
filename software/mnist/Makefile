@@ -8,6 +8,10 @@ CFLAGS += -DFIXMATH_NO_OVERFLOW
 LDFLAGS += -L$(abspath libfixmath/libfixmath/)
 LDFLAGS += -lfixmath
 LDFLAGS += train-images-idx3-ubyte.100.o
+LDFLAGS += wb0_init.o
+LDFLAGS += wb1_init.o
+LDFLAGS += wh0_init.o
+LDFLAGS += wh1_init.o
 
 LINK_DEPS += libfixmath.a
 LINK_DEPS += train_data
@@ -30,8 +34,11 @@ include $(BSP_BASE)/env/common.mk
 libfixmath.a:
 	$(MAKE) -C ./libfixmath/libfixmath CC=$(CC) CC_FLAGS="$(CFLAGS)" LD_FLAGS="$(LDFLAGS)" RISCV_ARCH=$(RISCV_ARCH) RISCV_ABI=$(RISCV_ABI) AR=$(AR)
 
+# IMAGE_SIZE = 4000000
+IMAGE_SIZE = 4000
+
 train-images-idx3-ubyte.100.o: train-images-idx3-ubyte
-	head -c 4000000 $< > $<.100
+	head -c $(IMAGE_SIZE) $< > $<.100
 	riscv64-unknown-elf-objcopy -I binary -O elf32-littleriscv -B riscv --rename-section .data=.rodata $<.100 $@
 
 train_data: train-images-idx3-ubyte train-labels-idx1-ubyte
@@ -44,4 +51,4 @@ t10k_data: t10k-images-idx3-ubyte t10k-labels-idx1-ubyte
 	wget "http://yann.lecun.com/exdb/mnist/$@"
 
 %_init.o: %.bin
-	riscv64-unknown-elf-objcopy -I binary -O elf32-littleriscv -B riscv $< $@
+	riscv64-unknown-elf-objcopy -I binary -O elf32-littleriscv -B riscv --rename-section .data=.rodata $< $@

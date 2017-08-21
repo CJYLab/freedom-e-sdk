@@ -122,7 +122,6 @@ extern char _binary_wh1_bin_end[];
 
 const char* hex_enum[] = {"0", "1", "2", "3", "4", "5", "6", "7",
                           "8", "9", "a", "b", "c", "d", "e", "f"};
-
 int main ()
 {
   write (STDOUT_FILENO, message, strlen (message));
@@ -140,25 +139,42 @@ int main ()
   //   if ((i % 28) == 27) { write (STDOUT_FILENO, "\r\n", 2); }
   // }
 
-  fix16_t *wh0;  // [INPUTNO * HIDDENNO];
-  fix16_t *wb0;  // [HIDDENNO];
-  fix16_t *wh1;  // [HIDDENNO * OUTPUTNO];
-  fix16_t *wb1;  // [OUTPUTNO];
+  const fix16_t *wh0 = (fix16_t *)_binary_wh0_bin_start;  // [INPUTNO * HIDDENNO];
+  const fix16_t *wb0 = (fix16_t *)_binary_wb0_bin_start;  // [HIDDENNO];
+  const fix16_t *wh1 = (fix16_t *)_binary_wh1_bin_start;  // [HIDDENNO * OUTPUTNO];
+  const fix16_t *wb1 = (fix16_t *)_binary_wb1_bin_start;  // [OUTPUTNO];
 
-  wh0 = _binary_wh0_bin_start;
-  wb0 = _binary_wb0_bin_start;
-  wh1 = _binary_wh1_bin_start;
-  wb1 = _binary_wb1_bin_start;
-
-  for (i = 0; i < INPUTNO; i++) {
-    char hex_value = wh0[i];
-
-    write (STDOUT_FILENO, hex_enum[(hex_value >> 4) & 0x0f], 2);
-    write (STDOUT_FILENO, hex_enum[(hex_value >> 0) & 0x0f], 2);
-
+  for (i = 0; i < HIDDENNO * INPUTNO; i++) {
+    fix16_t hex_value = wh0[i];
+    for (int j = 7; j >=0; j--) {
+      write (STDOUT_FILENO, hex_enum[(hex_value >> (j * 4)) & 0x0f], 2);
+    }
     if ((i % HIDDENNO) == (HIDDENNO-1)) { write (STDOUT_FILENO, "\r\n", 2); }
   }
 
+  for (i = 0; i < HIDDENNO; i++) {
+    fix16_t hex_value = wb0[i];
+    for (int j = 7; j >=0; j--) {
+      write (STDOUT_FILENO, hex_enum[(hex_value >> (j * 4)) & 0x0f], 2);
+    }
+    if ((i % HIDDENNO) == (HIDDENNO-1)) { write (STDOUT_FILENO, "\r\n", 2); }
+  }
+
+  for (i = 0; i < HIDDENNO * OUTPUTNO; i++) {
+    fix16_t hex_value = wh1[i];
+    for (int j = 7; j >=0; j--) {
+      write (STDOUT_FILENO, hex_enum[(hex_value >> (j * 4)) & 0x0f], 2);
+    }
+    if ((i % HIDDENNO) == (HIDDENNO-1)) { write (STDOUT_FILENO, "\r\n", 2); }
+  }
+
+  for (i = 0; i < OUTPUTNO; i++) {
+    fix16_t hex_value = wb1[i];
+    for (int j = 7; j >=0; j--) {
+      write (STDOUT_FILENO, hex_enum[(hex_value >> (j * 4)) & 0x0f], 2);
+    }
+    if ((i % HIDDENNO) == (HIDDENNO-1)) { write (STDOUT_FILENO, "\r\n", 2); }
+  }
 
   return 0;
 
