@@ -4,7 +4,7 @@ LIB =
 SRC = .
 INC =
 
-TARGET=/home/masayuki/work/freedom-e-sdk/work/build/riscv-gnu-toolchain/riscv64-unknown-elf/prefix/bin/riscv64-unknown-elf-
+TARGET=riscv64-unknown-elf-
 
 #Compiler settings
 CPP = $(TARGET)gcc

@@ -107,8 +107,8 @@ double drnd ();
 
 const char *message = "hello\r\n";
 
-extern char _binary_train_images_idx3_ubyte_100_start[];
-extern char _binary_train_images_idx3_ubyte_100_end[];
+// extern char _binary_train_images_idx3_ubyte_100_start[];
+// extern char _binary_train_images_idx3_ubyte_100_end[];
 
 extern char _binary_wb0_bin_start[];
 extern char _binary_wb0_bin_end[];
@@ -126,10 +126,11 @@ int main ()
 {
   write (STDOUT_FILENO, message, strlen (message));
 
-  int len = _binary_train_images_idx3_ubyte_100_end - _binary_train_images_idx3_ubyte_100_start;
-
   int i;
-  const int offset = 0x12;
+
+  // int len = _binary_train_images_idx3_ubyte_100_end - _binary_train_images_idx3_ubyte_100_start;
+  //
+  // const int offset = 0x12;
   // for (i = 0; i < len; i++) {
   //   char hex_value = _binary_train_images_idx3_ubyte_100_start[i+offset];
   //
@@ -144,37 +145,39 @@ int main ()
   const fix16_t *wh1 = (fix16_t *)_binary_wh1_bin_start;  // [HIDDENNO * OUTPUTNO];
   const fix16_t *wb1 = (fix16_t *)_binary_wb1_bin_start;  // [OUTPUTNO];
 
-  for (i = 0; i < HIDDENNO * INPUTNO; i++) {
-    fix16_t hex_value = wh0[i];
-    for (int j = 7; j >=0; j--) {
-      write (STDOUT_FILENO, hex_enum[(hex_value >> (j * 4)) & 0x0f], 2);
-    }
-    if ((i % HIDDENNO) == (HIDDENNO-1)) { write (STDOUT_FILENO, "\r\n", 2); }
-  }
+  // for (i = 0; i < HIDDENNO * INPUTNO; i++) {
+  //   fix16_t hex_value = wh0[i];
+  //   for (int j = 7; j >=0; j--) {
+  //     write (STDOUT_FILENO, hex_enum[(hex_value >> (j * 4)) & 0x0f], 2);
+  //   }
+  //   if ((i % HIDDENNO) == (HIDDENNO-1)) { write (STDOUT_FILENO, "\r\n", 2); }
+  // }
+  //
+  // for (i = 0; i < HIDDENNO; i++) {
+  //   fix16_t hex_value = wb0[i];
+  //   for (int j = 7; j >=0; j--) {
+  //     write (STDOUT_FILENO, hex_enum[(hex_value >> (j * 4)) & 0x0f], 2);
+  //   }
+  //   if ((i % HIDDENNO) == (HIDDENNO-1)) { write (STDOUT_FILENO, "\r\n", 2); }
+  // }
+  //
+  // for (i = 0; i < HIDDENNO * OUTPUTNO; i++) {
+  //   fix16_t hex_value = wh1[i];
+  //   for (int j = 7; j >=0; j--) {
+  //     write (STDOUT_FILENO, hex_enum[(hex_value >> (j * 4)) & 0x0f], 2);
+  //   }
+  //   if ((i % HIDDENNO) == (HIDDENNO-1)) { write (STDOUT_FILENO, "\r\n", 2); }
+  // }
+  //
+  // for (i = 0; i < OUTPUTNO; i++) {
+  //   fix16_t hex_value = wb1[i];
+  //   for (int j = 7; j >=0; j--) {
+  //     write (STDOUT_FILENO, hex_enum[(hex_value >> (j * 4)) & 0x0f], 2);
+  //   }
+  //   if ((i % HIDDENNO) == (HIDDENNO-1)) { write (STDOUT_FILENO, "\r\n", 2); }
+  // }
 
-  for (i = 0; i < HIDDENNO; i++) {
-    fix16_t hex_value = wb0[i];
-    for (int j = 7; j >=0; j--) {
-      write (STDOUT_FILENO, hex_enum[(hex_value >> (j * 4)) & 0x0f], 2);
-    }
-    if ((i % HIDDENNO) == (HIDDENNO-1)) { write (STDOUT_FILENO, "\r\n", 2); }
-  }
-
-  for (i = 0; i < HIDDENNO * OUTPUTNO; i++) {
-    fix16_t hex_value = wh1[i];
-    for (int j = 7; j >=0; j--) {
-      write (STDOUT_FILENO, hex_enum[(hex_value >> (j * 4)) & 0x0f], 2);
-    }
-    if ((i % HIDDENNO) == (HIDDENNO-1)) { write (STDOUT_FILENO, "\r\n", 2); }
-  }
-
-  for (i = 0; i < OUTPUTNO; i++) {
-    fix16_t hex_value = wb1[i];
-    for (int j = 7; j >=0; j--) {
-      write (STDOUT_FILENO, hex_enum[(hex_value >> (j * 4)) & 0x0f], 2);
-    }
-    if ((i % HIDDENNO) == (HIDDENNO-1)) { write (STDOUT_FILENO, "\r\n", 2); }
-  }
+  TestNetwork (INPUTNO, OUTPUTNO, HIDDENNO, wh0, wb0, wh1, wb1);
 
   return 0;
 
@@ -269,9 +272,6 @@ int main ()
                           fix16_mul (learn_rate_fix16, affine1_db[o]));
 	}
 
-    if ((no_input % epoch_size) == 0) {
-      TestNetwork (INPUTNO, OUTPUTNO, HIDDENNO, wh0, wb0, wh1, wb1);
-	}
   }
 
 #ifdef GPERF
@@ -294,37 +294,41 @@ void TestNetwork (const int input_size,
 				  const fix16_t *wh1,  // [hidden_size][output_size],
 				  const fix16_t *wb1)  // [output_size]
 {
-  printf ("=== TestNetwork ===\n");
-  int image_fd;
-  if ((image_fd = open("t10k-images-idx3-ubyte", O_RDONLY))==-1){
-	printf("couldn't open image file t10k-images-idx3-ubyte");
-	exit(0);
-  }
-  unsigned char *ptr;
-  static int num[10];
-  if (read(image_fd, num, 4 * sizeof(int)) == -1) { perror("read"); exit (EXIT_FAILURE); }
+  const *message0 = "=== TestNetwork ===\n";
+  write (STDOUT_FILENO, message0, strlen (message0));
 
-  int label_fd;
-  if ((label_fd = open("t10k-labels-idx1-ubyte", O_RDONLY)) == -1){
-	printf("couldn't open image file t10k-labels-idx1-ubyte");
-	exit(0);
-  }
-  if (read(label_fd, num, 2 * sizeof(int)) == -1) { perror("read"); exit (EXIT_FAILURE); }
+  // int image_fd;
+  // if ((image_fd = open("t10k-images-idx3-ubyte", O_RDONLY))==-1){
+  //   printf("couldn't open image file t10k-images-idx3-ubyte");
+  //   exit(0);
+  // }
+  // unsigned char *ptr;
+  // static int num[10];
+  // if (read(image_fd, num, 4 * sizeof(int)) == -1) { perror("read"); exit (EXIT_FAILURE); }
+  //
+  // int label_fd;
+  // if ((label_fd = open("t10k-labels-idx1-ubyte", O_RDONLY)) == -1){
+  //   printf("couldn't open image file t10k-labels-idx1-ubyte");
+  //   exit(0);
+  // }
+  // if (read(label_fd, num, 2 * sizeof(int)) == -1) { perror("read"); exit (EXIT_FAILURE); }
 
-  fix16_t in_data[BATCH_SIZE][INPUTNO];
+  fix16_t *in_data[BATCH_SIZE][INPUTNO];
   int ans_data[BATCH_SIZE];
 
   int correct = 0;
 
   for (int no_input = 0; no_input < 10000; no_input += BATCH_SIZE) {
+    write (STDOUT_FILENO, hex_enum[(no_input >> 4) & 0x0f], 2);
+
 	for (int b = 0; b < BATCH_SIZE; b++) {
 	  uint8_t image[INPUTNO];
-	  if (read (image_fd, image, INPUTNO * sizeof(unsigned char)) == -1)  { perror("read"); exit (EXIT_FAILURE); }
+	  // if (read (image_fd, image, INPUTNO * sizeof(unsigned char)) == -1)  { perror("read"); exit (EXIT_FAILURE); }
 	  for (int i = 0; i < INPUTNO; i++) {
 		in_data[b][i] = fix16_from_dbl (image[i] / 255.0);
 	  }
 	  uint8_t label;
-	  if (read (label_fd, &label, sizeof(uint8_t)) == -1) { perror("read"); exit (EXIT_FAILURE); }
+	  // if (read (label_fd, &label, sizeof(uint8_t)) == -1) { perror("read"); exit (EXIT_FAILURE); }
 	  ans_data[b] = label;
 	}
 
@@ -342,10 +346,10 @@ void TestNetwork (const int input_size,
 	  if (t == ans_data[b]) correct++;
 	}
   }
-  printf ("Correct = %d\n", correct);
+  // printf ("Correct = %d\n", correct);
 
-  close (image_fd);
-  close (label_fd);
+  const *message1 = "Correct = ";
+  write (STDOUT_FILENO, message1, strlen (message1));
 
   return;
 }
