@@ -25,7 +25,7 @@
 #define ALPHA    (10)   // Coefficient of learning
 #define SEED     (65535)  // Seed of random
 #define MAXINPUTNO (60000)  // Max number of learning data
-#define BATCH_SIZE (100)
+#define BATCH_SIZE (1)
 #define LEARNING_RATE (0.1)
 #define WEIGHT_INIT (0.01)
 
@@ -286,6 +286,13 @@ int main ()
   return 0;
 }
 
+fix16_t af0 [BATCH_SIZE * HIDDENNO];
+fix16_t in_data[BATCH_SIZE][INPUTNO];
+fix16_t af1 [BATCH_SIZE * OUTPUTNO];
+fix16_t rel0[BATCH_SIZE * HIDDENNO];
+fix16_t rel1[BATCH_SIZE * OUTPUTNO];
+	
+
 void TestNetwork (const int input_size,
 				  const int output_size,
 				  const int hidden_size,
@@ -294,63 +301,49 @@ void TestNetwork (const int input_size,
 				  const fix16_t *wh1,  // [hidden_size][output_size],
 				  const fix16_t *wb1)  // [output_size]
 {
-  const *message0 = "=== TestNetwork ===\n";
+  const char *message0 = "=== TestNetwork ===\n";
   write (STDOUT_FILENO, message0, strlen (message0));
 
-  // int image_fd;
-  // if ((image_fd = open("t10k-images-idx3-ubyte", O_RDONLY))==-1){
-  //   printf("couldn't open image file t10k-images-idx3-ubyte");
-  //   exit(0);
-  // }
-  // unsigned char *ptr;
-  // static int num[10];
-  // if (read(image_fd, num, 4 * sizeof(int)) == -1) { perror("read"); exit (EXIT_FAILURE); }
-  //
-  // int label_fd;
-  // if ((label_fd = open("t10k-labels-idx1-ubyte", O_RDONLY)) == -1){
-  //   printf("couldn't open image file t10k-labels-idx1-ubyte");
-  //   exit(0);
-  // }
-  // if (read(label_fd, num, 2 * sizeof(int)) == -1) { perror("read"); exit (EXIT_FAILURE); }
-
-  fix16_t *in_data[BATCH_SIZE][INPUTNO];
   int ans_data[BATCH_SIZE];
 
   int correct = 0;
 
-  for (int no_input = 0; no_input < 10000; no_input += BATCH_SIZE) {
-    write (STDOUT_FILENO, hex_enum[(no_input >> 4) & 0x0f], 2);
+  for (int no_input = 0; no_input < 100; no_input += BATCH_SIZE) {
+    write (STDOUT_FILENO, hex_enum[((no_input) >> 12) & 0x0f], 2);
+    write (STDOUT_FILENO, hex_enum[((no_input) >>  8) & 0x0f], 2);
+    write (STDOUT_FILENO, hex_enum[((no_input) >>  4) & 0x0f], 2);
+    write (STDOUT_FILENO, hex_enum[((no_input) >>  0) & 0x0f], 2);
+	write (STDOUT_FILENO, "\r\n", sizeof ("\r\n"));
 
-	for (int b = 0; b < BATCH_SIZE; b++) {
-	  uint8_t image[INPUTNO];
-	  // if (read (image_fd, image, INPUTNO * sizeof(unsigned char)) == -1)  { perror("read"); exit (EXIT_FAILURE); }
-	  for (int i = 0; i < INPUTNO; i++) {
-		in_data[b][i] = fix16_from_dbl (image[i] / 255.0);
-	  }
-	  uint8_t label;
-	  // if (read (label_fd, &label, sizeof(uint8_t)) == -1) { perror("read"); exit (EXIT_FAILURE); }
-	  ans_data[b] = label;
-	}
-
-	fix16_t af0 [BATCH_SIZE * HIDDENNO];
-	fix16_t af1 [BATCH_SIZE * OUTPUTNO];
-	fix16_t rel0[BATCH_SIZE * HIDDENNO];
-	fix16_t rel1[BATCH_SIZE * OUTPUTNO];
+	// for (int b = 0; b < BATCH_SIZE; b++) {
+	//   uint8_t image[INPUTNO];
+	//   // if (read (image_fd, image, INPUTNO * sizeof(unsigned char)) == -1)  { perror("read"); exit (EXIT_FAILURE); }
+	//   for (int i = 0; i < INPUTNO; i++) {
+	// 	in_data[b][i] = fix16_from_dbl (image[i] / 255.0);
+	//   }
+	//   uint8_t label;
+	//   // if (read (label_fd, &label, sizeof(uint8_t)) == -1) { perror("read"); exit (EXIT_FAILURE); }
+	//   ans_data[b] = label;
+	// }
+	// 
 
 	affine (HIDDENNO, INPUTNO,  BATCH_SIZE, af0, (const fix16_t *)in_data, wh0, wb0);
 	relu (BATCH_SIZE, HIDDENNO, rel0, af0);
 	affine (OUTPUTNO, HIDDENNO, BATCH_SIZE, af1, rel0,    wh1, wb1);
-
+	
 	for (int b = 0; b < BATCH_SIZE; b++) {
 	  int t = argmax (OUTPUTNO, &af1[b * OUTPUTNO]);
 	  if (t == ans_data[b]) correct++;
 	}
   }
-  // printf ("Correct = %d\n", correct);
+  printf ("Correct = %d\n", correct);
 
-  const *message1 = "Correct = ";
+  const char *message1 = "Correct = ";
   write (STDOUT_FILENO, message1, strlen (message1));
 
+  write (STDOUT_FILENO, hex_enum[(correct >> 4) & 0x0f], 2);
+  write (STDOUT_FILENO, hex_enum[(correct >> 0) & 0x0f], 2);
+  
   return;
 }
 
@@ -454,14 +447,14 @@ fix16_t affine (const int output_size,
 			   const fix16_t *wb)       // [output_size]
 {
   for (int b = 0; b < batch_size; b++) {
-	for (int o = 0; o < output_size; o++) {
-	  out[b * output_size + o] = fix16_from_dbl (0.0);
-	  for (int i = 0; i < input_size; i++) {
-		out[b * output_size + o] = fix16_add (out[b * output_size + o],
+  	for (int o = 0; o < output_size; o++) {
+  	  out[b * output_size + o] = fix16_from_dbl (0.0);
+  	  for (int i = 0; i < input_size; i++) {
+  	  	out[b * output_size + o] = fix16_add (out[b * output_size + o],
                                               fix16_mul (in_data[b * input_size + i], wh[i * output_size + o]));
-	  }
-	  out[b * output_size + o] = fix16_add (out[b * output_size + o], wb[o]);
-	}
+  	  }
+  	  out[b * output_size + o] = fix16_add (out[b * output_size + o], wb[o]);
+  	}
   }
 }
 
