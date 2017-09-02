@@ -110,6 +110,12 @@ const char *message = "hello\r\n";
 // extern char _binary_train_images_idx3_ubyte_100_start[];
 // extern char _binary_train_images_idx3_ubyte_100_end[];
 
+extern char _binary_t10k_images_idx3_ubyte_start[];
+extern char _binary_t10k_images_idx3_ubyte_end[];
+
+extern char _binary_t10k_labels_idx1_ubyte_start[];
+extern char _binary_t10k_labels_idx1_ubyte_end[];
+
 extern char _binary_wb0_bin_start[];
 extern char _binary_wb0_bin_end[];
 extern char _binary_wb1_bin_start[];
@@ -128,15 +134,15 @@ int main ()
 
   int i;
 
-  // int len = _binary_train_images_idx3_ubyte_100_end - _binary_train_images_idx3_ubyte_100_start;
-  //
-  // const int offset = 0x12;
+  int len = _binary_t10k_images_idx3_ubyte_end - _binary_t10k_images_idx3_ubyte_start;
+  
+  // const int offset = 0x10;
   // for (i = 0; i < len; i++) {
-  //   char hex_value = _binary_train_images_idx3_ubyte_100_start[i+offset];
-  //
+  //   char hex_value = _binary_t10k_images_idx3_ubyte_start[i+offset];
+  // 
   //   write (STDOUT_FILENO, hex_enum[(hex_value >> 4) & 0x0f], 2);
   //   write (STDOUT_FILENO, hex_enum[(hex_value >> 0) & 0x0f], 2);
-  //
+  // 
   //   if ((i % 28) == 27) { write (STDOUT_FILENO, "\r\n", 2); }
   // }
 
@@ -287,11 +293,12 @@ int main ()
 }
 
 fix16_t af0 [BATCH_SIZE * HIDDENNO];
-fix16_t in_data[BATCH_SIZE][INPUTNO];
+fix16_t fix16_in_data[INPUTNO];
+char *in_data;
+char *ans_data;
 fix16_t af1 [BATCH_SIZE * OUTPUTNO];
 fix16_t rel0[BATCH_SIZE * HIDDENNO];
 fix16_t rel1[BATCH_SIZE * OUTPUTNO];
-	
 
 void TestNetwork (const int input_size,
 				  const int output_size,
@@ -304,7 +311,13 @@ void TestNetwork (const int input_size,
   const char *message0 = "=== TestNetwork ===\n";
   write (STDOUT_FILENO, message0, strlen (message0));
 
-  int ans_data[BATCH_SIZE];
+  in_data  = &_binary_t10k_images_idx3_ubyte_start[0x10];
+  ans_data = &_binary_t10k_labels_idx1_ubyte_start[0x08];
+
+  // write (STDOUT_FILENO, hex_enum[(in_data[0] >> 12) & 0x0f], 2);
+  // write (STDOUT_FILENO, hex_enum[(in_data[0] >>  8) & 0x0f], 2);
+  // write (STDOUT_FILENO, hex_enum[(in_data[0] >>  4) & 0x0f], 2);
+  // write (STDOUT_FILENO, hex_enum[(in_data[0] >>  0) & 0x0f], 2);
 
   int correct = 0;
 
@@ -327,14 +340,29 @@ void TestNetwork (const int input_size,
 	// }
 	// 
 
-	affine (HIDDENNO, INPUTNO,  BATCH_SIZE, af0, (const fix16_t *)in_data, wh0, wb0);
+	for (int i = 0; i < 28 * 28; i++) {
+	  char hex_value = in_data[i];
+  
+	  write (STDOUT_FILENO, hex_enum[(hex_value >> 4) & 0x0f], 2);
+	  write (STDOUT_FILENO, hex_enum[(hex_value >> 0) & 0x0f], 2);
+  
+	  fix16_in_data[i] = fix16_from_dbl (in_data[i] / 255.0);
+	
+	  if ((i % 28) == 27) { write (STDOUT_FILENO, "\r\n", 2); }
+	}
+
+	affine (HIDDENNO, INPUTNO,  BATCH_SIZE, af0, (const fix16_t *)fix16_in_data, wh0, wb0);
 	relu (BATCH_SIZE, HIDDENNO, rel0, af0);
 	affine (OUTPUTNO, HIDDENNO, BATCH_SIZE, af1, rel0,    wh1, wb1);
 	
 	for (int b = 0; b < BATCH_SIZE; b++) {
 	  int t = argmax (OUTPUTNO, &af1[b * OUTPUTNO]);
 	  if (t == ans_data[b]) correct++;
+	  printf ("Ans_Data = %d, Label = %d\n", t, ans_data[b]);
 	}
+
+	in_data += INPUTNO;
+	ans_data ++;
   }
   printf ("Correct = %d\n", correct);
 

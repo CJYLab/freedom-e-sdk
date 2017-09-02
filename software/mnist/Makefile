@@ -9,6 +9,7 @@ LDFLAGS += -L$(abspath libfixmath/libfixmath/)
 LDFLAGS += -lfixmath
 # LDFLAGS += train-images-idx3-ubyte.100.o
 LDFLAGS += t10k-images-idx3-ubyte.o
+LDFLAGS += t10k-labels-idx1-ubyte.o
 LDFLAGS += wb0_init.o
 LDFLAGS += wb1_init.o
 LDFLAGS += wh0_init.o
@@ -19,6 +20,7 @@ LINK_DEPS += train_data
 LINK_DEPS += t10k_data
 # LINK_DEPS += train-images-idx3-ubyte.100.o
 LINK_DEPS += t10k-images-idx3-ubyte.o
+LINK_DEPS += t10k-labels-idx1-ubyte.o
 LINK_DEPS += wb0_init.o
 LINK_DEPS += wb1_init.o
 LINK_DEPS += wh0_init.o
@@ -48,6 +50,9 @@ train-images-idx3-ubyte.100.o: train-images-idx3-ubyte
 	riscv64-unknown-elf-objcopy -I binary -O elf32-littleriscv -B riscv --rename-section .data=.rodata $<.100 $@
 
 t10k-images-idx3-ubyte.o: t10k-images-idx3-ubyte
+	riscv64-unknown-elf-objcopy -I binary -O elf32-littleriscv -B riscv --rename-section .data=.rodata $< $@
+
+t10k-labels-idx1-ubyte.o: t10k-labels-idx1-ubyte
 	riscv64-unknown-elf-objcopy -I binary -O elf32-littleriscv -B riscv --rename-section .data=.rodata $< $@
 
 train_data: train-images-idx3-ubyte train-labels-idx1-ubyte
