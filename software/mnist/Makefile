@@ -1,7 +1,7 @@
 TARGET = mnist
 
 C_SRCS := train_twolayernet_fix16.c
-CFLAGS += -O2 -fno-builtin-printf
+CFLAGS += -O3 -fno-builtin-printf
 CFLAGS += -I$(abspath libfixmath/libfixmath/)
 CFLAGS += -DFIXMATH_NO_OVERFLOW
 

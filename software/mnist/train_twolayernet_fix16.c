@@ -135,159 +135,13 @@ int main ()
   int i;
 
   int len = _binary_t10k_images_idx3_ubyte_end - _binary_t10k_images_idx3_ubyte_start;
-  
-  // const int offset = 0x10;
-  // for (i = 0; i < len; i++) {
-  //   char hex_value = _binary_t10k_images_idx3_ubyte_start[i+offset];
-  // 
-  //   write (STDOUT_FILENO, hex_enum[(hex_value >> 4) & 0x0f], 2);
-  //   write (STDOUT_FILENO, hex_enum[(hex_value >> 0) & 0x0f], 2);
-  // 
-  //   if ((i % 28) == 27) { write (STDOUT_FILENO, "\r\n", 2); }
-  // }
 
   const fix16_t *wh0 = (fix16_t *)_binary_wh0_bin_start;  // [INPUTNO * HIDDENNO];
   const fix16_t *wb0 = (fix16_t *)_binary_wb0_bin_start;  // [HIDDENNO];
   const fix16_t *wh1 = (fix16_t *)_binary_wh1_bin_start;  // [HIDDENNO * OUTPUTNO];
   const fix16_t *wb1 = (fix16_t *)_binary_wb1_bin_start;  // [OUTPUTNO];
 
-  // for (i = 0; i < HIDDENNO * INPUTNO; i++) {
-  //   fix16_t hex_value = wh0[i];
-  //   for (int j = 7; j >=0; j--) {
-  //     write (STDOUT_FILENO, hex_enum[(hex_value >> (j * 4)) & 0x0f], 2);
-  //   }
-  //   if ((i % HIDDENNO) == (HIDDENNO-1)) { write (STDOUT_FILENO, "\r\n", 2); }
-  // }
-  //
-  // for (i = 0; i < HIDDENNO; i++) {
-  //   fix16_t hex_value = wb0[i];
-  //   for (int j = 7; j >=0; j--) {
-  //     write (STDOUT_FILENO, hex_enum[(hex_value >> (j * 4)) & 0x0f], 2);
-  //   }
-  //   if ((i % HIDDENNO) == (HIDDENNO-1)) { write (STDOUT_FILENO, "\r\n", 2); }
-  // }
-  //
-  // for (i = 0; i < HIDDENNO * OUTPUTNO; i++) {
-  //   fix16_t hex_value = wh1[i];
-  //   for (int j = 7; j >=0; j--) {
-  //     write (STDOUT_FILENO, hex_enum[(hex_value >> (j * 4)) & 0x0f], 2);
-  //   }
-  //   if ((i % HIDDENNO) == (HIDDENNO-1)) { write (STDOUT_FILENO, "\r\n", 2); }
-  // }
-  //
-  // for (i = 0; i < OUTPUTNO; i++) {
-  //   fix16_t hex_value = wb1[i];
-  //   for (int j = 7; j >=0; j--) {
-  //     write (STDOUT_FILENO, hex_enum[(hex_value >> (j * 4)) & 0x0f], 2);
-  //   }
-  //   if ((i % HIDDENNO) == (HIDDENNO-1)) { write (STDOUT_FILENO, "\r\n", 2); }
-  // }
-
   TestNetwork (INPUTNO, OUTPUTNO, HIDDENNO, wh0, wb0, wh1, wb1);
-
-  return 0;
-
-#ifdef NEVER
-
-  fix16_t hi[HIDDENNO + 1];
-  fix16_t *in_data = malloc (sizeof(fix16_t) * MAXINPUTNO * INPUTNO);
-  int     ans_data[MAXINPUTNO];
-  fix16_t o[OUTPUTNO];
-  int n_of_e;
-
-  srand (SEED);
-
-  initwh (INPUTNO, HIDDENNO, wh0);
-  initwb (HIDDENNO, wb0);
-  initwh (HIDDENNO, OUTPUTNO, wh0);
-  initwb (OUTPUTNO, wb1);
-
-  n_of_e = MAXINPUTNO / BATCH_SIZE;
-  int fd_image = open_image ();
-  int fd_label = open_label ();
-
-  const int epoch_size = 50;
-  const fix16_t learn_rate_fix16 = fix16_from_dbl (LEARNING_RATE);
-
-  getdata (fd_image, fd_label, in_data, ans_data);
-
-#ifdef GPERF
-  ProfilerStart("train_twolayernet_fix16.prof");
-#endif // GPERF
-
-  for (int no_input = 0; no_input < n_of_e; no_input++) {
-
-    fix16_t af0 [BATCH_SIZE * HIDDENNO];
-    fix16_t af1 [BATCH_SIZE * OUTPUTNO];
-    fix16_t rel0[BATCH_SIZE * HIDDENNO];
-    fix16_t rel1[BATCH_SIZE * OUTPUTNO];
-
-    // print_images (&in_data[INPUTNO * BATCH_SIZE * no_input], ans_data[BATCH_SIZE * no_input]);
-
-    affine (HIDDENNO, INPUTNO,  BATCH_SIZE, af0, &in_data[INPUTNO * BATCH_SIZE * no_input] , wh0, wb0);
-	relu (BATCH_SIZE, HIDDENNO, rel0, af0);
-
-    affine (OUTPUTNO, HIDDENNO, BATCH_SIZE, af1, rel0,    wh1, wb1);
-
-    softmax (BATCH_SIZE, OUTPUTNO, rel1, af1);
-
-    // Back ward
-	fix16_t ans_label[BATCH_SIZE * OUTPUTNO] = {0};
-	for (int b = 0; b < BATCH_SIZE; b++) {
-      ans_label[b * OUTPUTNO + ans_data[no_input * BATCH_SIZE + b]] = fix16_from_dbl(1.0);
-	}
-	fix16_t softmax_dx[BATCH_SIZE * OUTPUTNO];
-	softmax_backward (BATCH_SIZE, OUTPUTNO, softmax_dx, rel1, ans_label);
-	fix16_t affine1_dx[BATCH_SIZE * HIDDENNO];
-	fix16_t affine1_dw[HIDDENNO * OUTPUTNO];
-	fix16_t affine1_db[OUTPUTNO];
-
-	affine_backward (OUTPUTNO, HIDDENNO, BATCH_SIZE,
-					 affine1_dx, affine1_db, affine1_dw,
-					 softmax_dx, wh1, rel0);
-
-	fix16_t relu_dx[BATCH_SIZE * HIDDENNO];
-	relu_backward (BATCH_SIZE, HIDDENNO, relu_dx, af0, affine1_dx);
-	fix16_t affine0_dx[BATCH_SIZE * INPUTNO];
-	fix16_t affine0_dw[INPUTNO * HIDDENNO];
-	fix16_t affine0_db[HIDDENNO];
-	affine_backward (HIDDENNO, INPUTNO, BATCH_SIZE,
-					 affine0_dx, affine0_db, affine0_dw,
-					 relu_dx, wh0, &in_data[INPUTNO * BATCH_SIZE * no_input]);
-
-	for (int i = 0; i < INPUTNO; i++) {
-	  for (int h = 0; h < HIDDENNO; h++) {
-		wh0[i * HIDDENNO + h] = fix16_sub (wh0[i * HIDDENNO + h],
-                                           fix16_mul (learn_rate_fix16, affine0_dw[i * HIDDENNO + h]));
-	  }
-	}
-
-	for (int h = 0; h < HIDDENNO; h++) {
-	  wb0[h] = fix16_sub (wb0[h],
-                          fix16_mul (learn_rate_fix16, affine0_db[h]));
-	}
-
-	for (int h = 0; h < HIDDENNO; h++) {
-	  for (int o = 0; o < OUTPUTNO; o++) {
-		wh1[h * OUTPUTNO + o] = fix16_sub (wh1[h * OUTPUTNO + o],
-                                           fix16_mul (learn_rate_fix16, affine1_dw[h * OUTPUTNO + o]));
-	  }
-	}
-	for (int o = 0; o < OUTPUTNO; o++) {
-	  wb1[o] = fix16_sub (wb1[o],
-                          fix16_mul (learn_rate_fix16, affine1_db[o]));
-	}
-
-  }
-
-#ifdef GPERF
-  ProfilerStop();
-#endif // GPERF
-
-  close(fd_image);
-  close(fd_label);
-
-#endif // NEVER
 
   return 0;
 }
@@ -338,23 +192,23 @@ void TestNetwork (const int input_size,
 	//   // if (read (label_fd, &label, sizeof(uint8_t)) == -1) { perror("read"); exit (EXIT_FAILURE); }
 	//   ans_data[b] = label;
 	// }
-	// 
+	//
 
 	for (int i = 0; i < 28 * 28; i++) {
 	  char hex_value = in_data[i];
-  
+
 	  write (STDOUT_FILENO, hex_enum[(hex_value >> 4) & 0x0f], 2);
 	  write (STDOUT_FILENO, hex_enum[(hex_value >> 0) & 0x0f], 2);
-  
+
 	  fix16_in_data[i] = fix16_from_dbl (in_data[i] / 255.0);
-	
+
 	  if ((i % 28) == 27) { write (STDOUT_FILENO, "\r\n", 2); }
 	}
 
 	affine (HIDDENNO, INPUTNO,  BATCH_SIZE, af0, (const fix16_t *)fix16_in_data, wh0, wb0);
 	relu (BATCH_SIZE, HIDDENNO, rel0, af0);
 	affine (OUTPUTNO, HIDDENNO, BATCH_SIZE, af1, rel0,    wh1, wb1);
-	
+
 	for (int b = 0; b < BATCH_SIZE; b++) {
 	  int t = argmax (OUTPUTNO, &af1[b * OUTPUTNO]);
 	  if (t == ans_data[b]) correct++;
@@ -371,99 +225,10 @@ void TestNetwork (const int input_size,
 
   write (STDOUT_FILENO, hex_enum[(correct >> 4) & 0x0f], 2);
   write (STDOUT_FILENO, hex_enum[(correct >> 0) & 0x0f], 2);
-  
+
   return;
 }
 
-
-
-/* http://www.kk.iij4u.or.jp/~kondo/wave/swab.html */
-void FlipLong(unsigned char * ptr) {
-    register unsigned char val;
-
-    /* Swap 1st and 4th bytes */
-    val = *(ptr);
-    *(ptr) = *(ptr+3);
-    *(ptr+3) = val;
-
-    /* Swap 2nd and 3rd bytes */
-    ptr += 1;
-    val = *(ptr);
-    *(ptr) = *(ptr+1);
-    *(ptr+1) = val;
-}
-
-int open_image ()
-{
-  int fd;
-  if ((fd = open(IMAGE_FILE,O_RDONLY))==-1){
-	printf("couldn't open image file");
-	exit(0);
-  }
-
-  unsigned char *ptr;
-  static int num[10];
-  if (read(fd, num, 4 * sizeof(int)) == -1) { perror("read"); exit (EXIT_FAILURE); }
-
-  for (int i = 0; i < 4; i++) {
-	ptr = (unsigned char *)(num + i);
-	FlipLong( ptr);
-	printf("%d\n", num[i]);
-	ptr = ptr + sizeof(int);
-  }
-
-  return fd;
-}
-
-
-int open_label ()
-{
-  int fd;
-  if ((fd = open(LABEL_FILE,O_RDONLY))==-1){
-	printf("couldn't open image file");
-	exit(0);
-  }
-
-  unsigned char *ptr;
-  static int num[10];
-  if (read(fd, num, 2 * sizeof(int)) == -1) { perror("read"); exit (EXIT_FAILURE); }
-
-  for (int i = 0; i < 2; i++) {
-	ptr = (unsigned char *)(num + i);
-	FlipLong( ptr);
-	printf("%d\n", num[i]);
-	ptr = ptr + sizeof(int);
-  }
-
-  return fd;
-}
-
-
-int getdata (int fd_image, int fd_label, fix16_t *in_data, int *ans)
-{
-  uint8_t image[INPUTNO];
-  for (int b = 0; b < MAXINPUTNO; b++) {
-	if (read (fd_image, image, INPUTNO * sizeof(unsigned char)) == -1) { perror("read"); exit (EXIT_FAILURE); }
-	for (int i = 0; i < INPUTNO; i++) {
-	  in_data[b * INPUTNO + i] = fix16_from_dbl (image[i] / 255.0);
-	}
-	uint8_t label;
-	if (read (fd_label, &label, sizeof(uint8_t)) == -1) { perror("read"); exit (EXIT_FAILURE); }
-	ans[b] = label;
-  }
-}
-
-
-void print_images (fix16_t data[INPUTNO], int label)
-{
-  printf ("=== LABEL %d ===\n", label);
-  for (int j = 0; j < INPUTNO; j++) {
-    printf("%1.5lf ", fix16_to_dbl (data[j]));
-	if ( (j+1) % 28 == 0 ){
-	  printf("\n");
-	}
-  }
-}
 
 
 fix16_t affine (const int output_size,
