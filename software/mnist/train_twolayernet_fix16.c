@@ -29,26 +29,16 @@
 #define LEARNING_RATE (0.1)
 #define WEIGHT_INIT (0.01)
 
-int open_image ();
-int open_label ();
-
-int getdata (int fd_image,
-			 int fd_label,
-			 fix16_t *in_data,
-			 int     *ans);
-void hlearn (fix16_t **wh, // weight of hidden layer
-			 fix16_t *wo, // weight of output layer
-			 int output_size, int input_size,
-			 fix16_t *hi, // current hidden layer ansewr
-			 fix16_t *e,  // input value
-			 fix16_t *o);   // output value
-void print_images (fix16_t data[INPUTNO], int label);
-void olearn (fix16_t *wo,
-			 int     element_size,
-			 fix16_t *hi,
-			 fix16_t *e,
-			 fix16_t *ans,
-			 fix16_t *o);
+#define rdmcycle(hi_cycle, lo_cycle)  {							   \
+    uint32_t lo, hi, hi2;                              \
+    __asm__ __volatile__ ("1:\n\t"                     \
+                          "csrr %0, mcycleh\n\t"       \
+                          "csrr %1, mcycle\n\t"        \
+                          "csrr %2, mcycleh\n\t"       \
+                          "bne  %0, %2, 1b\n\t"                 \
+                          : "=r" (hi), "=r" (lo), "=r" (hi2)) ; \
+	hi_cycle = hi; lo_cycle = lo;								\
+  }
 
 fix16_t affine (const int output_size,
                 const int input_size,
@@ -99,13 +89,8 @@ void TestNetwork (const int input_size,
 
 int argmax (const int x_size, fix16_t *o);
 
-void initwh(const int y_size, const int x_size, fix16_t *wh);
-void initwb(const int x_size, fix16_t *wb);
-
 double rand_normal ( double mu, double sigma );
 double drnd ();
-
-const char *message = "hello\r\n";
 
 // extern char _binary_train_images_idx3_ubyte_100_start[];
 // extern char _binary_train_images_idx3_ubyte_100_end[];
@@ -130,11 +115,7 @@ const char* hex_enum[] = {"0", "1", "2", "3", "4", "5", "6", "7",
                           "8", "9", "a", "b", "c", "d", "e", "f"};
 int main ()
 {
-  write (STDOUT_FILENO, message, strlen (message));
-
   int i;
-
-  int len = _binary_t10k_images_idx3_ubyte_end - _binary_t10k_images_idx3_ubyte_start;
 
   const fix16_t *wh0 = (fix16_t *)_binary_wh0_bin_start;  // [INPUTNO * HIDDENNO];
   const fix16_t *wb0 = (fix16_t *)_binary_wb0_bin_start;  // [HIDDENNO];
@@ -147,12 +128,12 @@ int main ()
 }
 
 fix16_t af0 [BATCH_SIZE * HIDDENNO];
-fix16_t fix16_in_data[INPUTNO];
+fix16_t fix16_in_data[BATCH_SIZE*INPUTNO];
 char *in_data;
 char *ans_data;
-fix16_t af1 [BATCH_SIZE * OUTPUTNO];
+// fix16_t af1 [BATCH_SIZE * OUTPUTNO];
 fix16_t rel0[BATCH_SIZE * HIDDENNO];
-fix16_t rel1[BATCH_SIZE * OUTPUTNO];
+// fix16_t rel1[BATCH_SIZE * OUTPUTNO];
 
 void TestNetwork (const int input_size,
 				  const int output_size,
@@ -168,63 +149,45 @@ void TestNetwork (const int input_size,
   in_data  = &_binary_t10k_images_idx3_ubyte_start[0x10];
   ans_data = &_binary_t10k_labels_idx1_ubyte_start[0x08];
 
-  // write (STDOUT_FILENO, hex_enum[(in_data[0] >> 12) & 0x0f], 2);
-  // write (STDOUT_FILENO, hex_enum[(in_data[0] >>  8) & 0x0f], 2);
-  // write (STDOUT_FILENO, hex_enum[(in_data[0] >>  4) & 0x0f], 2);
-  // write (STDOUT_FILENO, hex_enum[(in_data[0] >>  0) & 0x0f], 2);
-
   int correct = 0;
-
-  for (int no_input = 0; no_input < 100; no_input += BATCH_SIZE) {
-    write (STDOUT_FILENO, hex_enum[((no_input) >> 12) & 0x0f], 2);
-    write (STDOUT_FILENO, hex_enum[((no_input) >>  8) & 0x0f], 2);
-    write (STDOUT_FILENO, hex_enum[((no_input) >>  4) & 0x0f], 2);
-    write (STDOUT_FILENO, hex_enum[((no_input) >>  0) & 0x0f], 2);
-	write (STDOUT_FILENO, "\r\n", sizeof ("\r\n"));
-
-	// for (int b = 0; b < BATCH_SIZE; b++) {
-	//   uint8_t image[INPUTNO];
-	//   // if (read (image_fd, image, INPUTNO * sizeof(unsigned char)) == -1)  { perror("read"); exit (EXIT_FAILURE); }
-	//   for (int i = 0; i < INPUTNO; i++) {
-	// 	in_data[b][i] = fix16_from_dbl (image[i] / 255.0);
-	//   }
-	//   uint8_t label;
-	//   // if (read (label_fd, &label, sizeof(uint8_t)) == -1) { perror("read"); exit (EXIT_FAILURE); }
-	//   ans_data[b] = label;
-	// }
-	//
-
-	for (int i = 0; i < 28 * 28; i++) {
-	  char hex_value = in_data[i];
-
-	  write (STDOUT_FILENO, hex_enum[(hex_value >> 4) & 0x0f], 2);
-	  write (STDOUT_FILENO, hex_enum[(hex_value >> 0) & 0x0f], 2);
-
-	  fix16_in_data[i] = fix16_from_dbl (in_data[i] / 255.0);
-
-	  if ((i % 28) == 27) { write (STDOUT_FILENO, "\r\n", 2); }
+  uint32_t start_cycle[2], stop_cycle[2];
+  rdmcycle(start_cycle[1], start_cycle[0]);
+  
+  for (int no_input = 0; no_input < 100 * BATCH_SIZE; no_input += BATCH_SIZE) {
+	for (int i = 0; i < 28 * 28 * BATCH_SIZE; i++) {
+	  /*
+		char hex_value = in_data[i];
+		write (STDOUT_FILENO, hex_enum[(hex_value >> 4) & 0x0f], 2);
+		write (STDOUT_FILENO, hex_enum[(hex_value >> 0) & 0x0f], 2);
+	  */
+	  
+	  // fix16_in_data[i] = fix16_from_dbl (in_data[i] / 255.0);
+	  fix16_in_data[i] = (in_data[i] << 8);
+	  /*
+		if ((i % 28) == 27) { write (STDOUT_FILENO, "\r\n", 2); }
+	  */
 	}
 
 	affine (HIDDENNO, INPUTNO,  BATCH_SIZE, af0, (const fix16_t *)fix16_in_data, wh0, wb0);
 	relu (BATCH_SIZE, HIDDENNO, rel0, af0);
-	affine (OUTPUTNO, HIDDENNO, BATCH_SIZE, af1, rel0,    wh1, wb1);
+	// affine (OUTPUTNO, HIDDENNO, BATCH_SIZE, af1, rel0,    wh1, wb1);
+	affine (OUTPUTNO, HIDDENNO, BATCH_SIZE, af0, rel0,    wh1, wb1);
 
 	for (int b = 0; b < BATCH_SIZE; b++) {
-	  int t = argmax (OUTPUTNO, &af1[b * OUTPUTNO]);
+	  // int t = argmax (OUTPUTNO, &af1[b * OUTPUTNO]);
+	  int t = argmax (OUTPUTNO, &af0[b * OUTPUTNO]);
 	  if (t == ans_data[b]) correct++;
 	  printf ("Ans_Data = %d, Label = %d\n", t, ans_data[b]);
 	}
 
-	in_data += INPUTNO;
-	ans_data ++;
+	in_data += (INPUTNO * BATCH_SIZE);
+	ans_data += BATCH_SIZE;
   }
+
+  rdmcycle(stop_cycle[1], stop_cycle[0]);
+
   printf ("Correct = %d\n", correct);
-
-  const char *message1 = "Correct = ";
-  write (STDOUT_FILENO, message1, strlen (message1));
-
-  write (STDOUT_FILENO, hex_enum[(correct >> 4) & 0x0f], 2);
-  write (STDOUT_FILENO, hex_enum[(correct >> 0) & 0x0f], 2);
+  printf ("Time = %08x%08x - %08x%08x\n", stop_cycle[1], stop_cycle[0], start_cycle[1], start_cycle[0]);
 
   return;
 }
@@ -241,7 +204,7 @@ fix16_t affine (const int output_size,
 {
   for (int b = 0; b < batch_size; b++) {
   	for (int o = 0; o < output_size; o++) {
-  	  out[b * output_size + o] = fix16_from_dbl (0.0);
+  	  out[b * output_size + o] = 0;
   	  for (int i = 0; i < input_size; i++) {
   	  	out[b * output_size + o] = fix16_add (out[b * output_size + o],
                                               fix16_mul (in_data[b * input_size + i], wh[i * output_size + o]));
@@ -377,24 +340,6 @@ int argmax (const int x_size, fix16_t *o)
   }
 
   return max_idx;
-}
-
-
-void initwh (const int y_size, const int x_size, fix16_t *wh)
-{
-  for (int y = 0; y < y_size; y++) {
-	for (int x = 0; x < x_size; x++) {
-	  wh[y * x_size + x] = fix16_from_dbl (WEIGHT_INIT * rand_normal (0.0, 1.0));
-	}
-  }
-}
-
-
-void initwb (const int x_size, fix16_t *wb)
-{
-  for (int j = 0; j < x_size + 1; j++) {
-    wb[j] = 0;
-  }
 }
 
 
