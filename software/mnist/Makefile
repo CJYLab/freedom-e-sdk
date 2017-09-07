@@ -4,6 +4,7 @@ C_SRCS := train_twolayernet_fix16.c
 CFLAGS += -O3 -fno-builtin-printf
 CFLAGS += -I$(abspath libfixmath/libfixmath/)
 CFLAGS += -DFIXMATH_NO_OVERFLOW
+# CFLAGS += -DFIXMATH_NO_64BIT
 
 LDFLAGS += -L$(abspath libfixmath/libfixmath/)
 LDFLAGS += -lfixmath
@@ -31,6 +32,7 @@ CLEAN_OBJS += wb0_init.o
 CLEAN_OBJS += wb1_init.o
 CLEAN_OBJS += wh0_init.o
 CLEAN_OBJS += wh1_init.o
+CLEAN_OBJS += ./libfixmath/libfixmath/libfixmath.a
 
 
 $(DHRY_OBJS): %.o: %.c $(HEADERS)

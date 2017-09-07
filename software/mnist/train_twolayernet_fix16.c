@@ -25,7 +25,7 @@
 #define ALPHA    (10)   // Coefficient of learning
 #define SEED     (65535)  // Seed of random
 #define MAXINPUTNO (60000)  // Max number of learning data
-#define BATCH_SIZE (1)
+#define BATCH_SIZE (2)
 #define LEARNING_RATE (0.1)
 #define WEIGHT_INIT (0.01)
 
@@ -113,15 +113,26 @@ extern char _binary_wh1_bin_end[];
 
 const char* hex_enum[] = {"0", "1", "2", "3", "4", "5", "6", "7",
                           "8", "9", "a", "b", "c", "d", "e", "f"};
+
+// fix16_t wh0[INPUTNO * HIDDENNO];
+fix16_t wb0[HIDDENNO];          
+fix16_t wh1[HIDDENNO * OUTPUTNO];
+fix16_t wb1[OUTPUTNO];          
+
+const fix16_t *wh0 = (fix16_t *)_binary_wh0_bin_start;  // [INPUTNO * HIDDENNO];
+const fix16_t *c_wb0 = (fix16_t *)_binary_wb0_bin_start;  // [HIDDENNO];
+const fix16_t *c_wh1 = (fix16_t *)_binary_wh1_bin_start;  // [HIDDENNO * OUTPUTNO];
+const fix16_t *c_wb1 = (fix16_t *)_binary_wb1_bin_start;  // [OUTPUTNO];          
+
 int main ()
 {
   int i;
 
-  const fix16_t *wh0 = (fix16_t *)_binary_wh0_bin_start;  // [INPUTNO * HIDDENNO];
-  const fix16_t *wb0 = (fix16_t *)_binary_wb0_bin_start;  // [HIDDENNO];
-  const fix16_t *wh1 = (fix16_t *)_binary_wh1_bin_start;  // [HIDDENNO * OUTPUTNO];
-  const fix16_t *wb1 = (fix16_t *)_binary_wb1_bin_start;  // [OUTPUTNO];
-
+  // for (i = 0; i < INPUTNO * HIDDENNO; i++)  wh0[i] = c_wh0[i];
+  for (i = 0; i < HIDDENNO; i++)            wb0[i] = c_wb0[i];
+  for (i = 0; i < HIDDENNO * OUTPUTNO; i++) wh1[i] = c_wh1[i];
+  for (i = 0; i < OUTPUTNO; i++)            wb1[i] = c_wb1[i];
+	
   TestNetwork (INPUTNO, OUTPUTNO, HIDDENNO, wh0, wb0, wh1, wb1);
 
   return 0;
@@ -131,9 +142,8 @@ fix16_t af0 [BATCH_SIZE * HIDDENNO];
 fix16_t fix16_in_data[BATCH_SIZE*INPUTNO];
 char *in_data;
 char *ans_data;
-// fix16_t af1 [BATCH_SIZE * OUTPUTNO];
+fix16_t af1 [BATCH_SIZE * OUTPUTNO];
 fix16_t rel0[BATCH_SIZE * HIDDENNO];
-// fix16_t rel1[BATCH_SIZE * OUTPUTNO];
 
 void TestNetwork (const int input_size,
 				  const int output_size,
@@ -161,7 +171,6 @@ void TestNetwork (const int input_size,
 		write (STDOUT_FILENO, hex_enum[(hex_value >> 0) & 0x0f], 2);
 	  */
 	  
-	  // fix16_in_data[i] = fix16_from_dbl (in_data[i] / 255.0);
 	  fix16_in_data[i] = (in_data[i] << 8);
 	  /*
 		if ((i % 28) == 27) { write (STDOUT_FILENO, "\r\n", 2); }
@@ -170,14 +179,11 @@ void TestNetwork (const int input_size,
 
 	affine (HIDDENNO, INPUTNO,  BATCH_SIZE, af0, (const fix16_t *)fix16_in_data, wh0, wb0);
 	relu (BATCH_SIZE, HIDDENNO, rel0, af0);
-	// affine (OUTPUTNO, HIDDENNO, BATCH_SIZE, af1, rel0,    wh1, wb1);
-	affine (OUTPUTNO, HIDDENNO, BATCH_SIZE, af0, rel0,    wh1, wb1);
+	affine (OUTPUTNO, HIDDENNO, BATCH_SIZE, af1, rel0,    wh1, wb1);
 
 	for (int b = 0; b < BATCH_SIZE; b++) {
-	  // int t = argmax (OUTPUTNO, &af1[b * OUTPUTNO]);
-	  int t = argmax (OUTPUTNO, &af0[b * OUTPUTNO]);
+	  int t = argmax (OUTPUTNO, &af1[b * OUTPUTNO]);
 	  if (t == ans_data[b]) correct++;
-	  printf ("Ans_Data = %d, Label = %d\n", t, ans_data[b]);
 	}
 
 	in_data += (INPUTNO * BATCH_SIZE);

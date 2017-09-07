@@ -4,6 +4,9 @@ LIB =
 SRC = .
 INC =
 
+DEFINES += FIXMATH_NO_OVERFLOW
+# DEFINES += FIXMATH_NO_64BIT
+
 TARGET=riscv64-unknown-elf-
 
 #Compiler settings
