@@ -69,25 +69,29 @@ int main()
   uint64_t after_cycle;
   uint64_t after_instret;
 
-  char *p_data = _binary_t10k_images_idx3_ubyte_start;
+  volatile char *p_data = _binary_t10k_images_idx3_ubyte_start;
   
-  printf("\n\Measure Flash Memory Read Latency.\n");
+  printf ("Flash Memory Latency Measurement\n");
   
   for (int i = 0; i < 28*28; i++){
     rdmcycle(&before_cycle);
     rdminstret(&before_instret);
 
-    volatile int result = p_data[i];
+    volatile char result = p_data[i];
     
     rdmcycle(&after_cycle);
     rdminstret(&after_instret);
 
-	printf ("Start:%ld, Stop:%ld, Cycle=%ld\n",
-			(uint32_t)(before_cycle),
-			(uint32_t)after_cycle,
-			(uint32_t)(after_cycle - before_cycle));
+	if ((i % 100) == 0) {
+	  printf ("Start:%ld, Stop:%ld, Cycle=%ld\n",
+			  (uint32_t)(before_cycle),
+			  (uint32_t)after_cycle,
+			  (uint32_t)(after_cycle - before_cycle));
+	}
   }
 
+  printf ("Flash Memory Throughput Measurement\n");
+  
   rdmcycle(&before_cycle);
   rdminstret(&before_instret);
   for (int i = 0; i < 28*28*10; i++){
@@ -99,6 +103,6 @@ int main()
 		  (uint32_t)(before_cycle),
 		  (uint32_t)after_cycle,
 		  (uint32_t)(after_cycle - before_cycle));
-    
+
   return 0;
 }
